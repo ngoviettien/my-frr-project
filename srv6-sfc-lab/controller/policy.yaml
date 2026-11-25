@@ -1,0 +1,90 @@
+# =====================================================================
+#  Chính sách cho SDN controller SRv6 SFC (controller/sfc_controller.py)
+#  Sửa file này rồi restart controller. Không cần sửa code.
+# =====================================================================
+lab: SRv6-lab                 # tên lab containerlab -> container clab-<lab>-<node>
+
+# ---------- Service Function ----------
+# proxy: SF không hiểu SRv6 (Suricata). SID của nó là End.DX6 (kernel yêu cầu segleft=0),
+#        nên danh sách SID bị CẮT tại SF này; node proxy encap lại phần còn lại khi SF trả gói
+#        về qua return_if (ip -6 rule iif <return_if> -> bảng proxy riêng cho từng flow).
+# health: lệnh chạy trong container SF, exit 0 = sống.
+service_functions:
+  fw:
+    sid: 2001:db8:100:35::f1
+    container: fw1
+    health: "nft list table inet sfc_fw >/dev/null"
+  fw2:
+    sid: 2001:db8:100:32::f2
+    container: fw2
+    health: "nft list table inet sfc_ratelimit >/dev/null"
+  ips:
+    sid: 2001:db8:100:34::a1
+    container: suricata1
+    health: "kill -0 $(cat /var/run/suricata.pid)"
+    proxy:
+      node: r4
+      return_if: eth1
+      encap_dev: eth5
+
+# SF chết thì làm gì: bypass = bỏ SF khỏi chuỗi (giữ kết nối); keep = giữ nguyên (fail-closed)
+sf_failure: bypass
+
+# ---------- Flow ----------
+flows:
+  A:
+    src: 2001:db8:100:41::/64           # h1
+    dst: 2001:db8:100:43::/64           # s1
+    fwd: {headend: r1, dev: eth3, egress_sid: 2001:db8:100:33::d6}
+    rev: {headend: r3, dev: eth4, egress_sid: 2001:db8:100:31::d6}
+    table: 201
+    pref: 1001
+    proxy_table: 301
+    baseline: fw
+  B:
+    src: 2001:db8:100:42::/64           # h2
+    dst: 2001:db8:100:44::/64           # s2
+    fwd: {headend: r1, dev: eth3, egress_sid: 2001:db8:100:33::d6}
+    rev: {headend: r3, dev: eth4, egress_sid: 2001:db8:100:31::d6}
+    table: 202
+    pref: 1002
+    proxy_table: 302
+    baseline: fw
+
+# ---------- Phản ứng tự động ----------
+# Thang leo thang: trigger chỉ đẩy flow LÊN bậc cao hơn (hoặc làm mới bộ đếm giờ nếu cùng bậc).
+# Hết 'hold' giây không có trigger mới -> trả flow về baseline.
+escalation: [fw, fw-ips, fw2-fw-ips, quarantine]
+hold: 60                 # giây, cho các chuỗi
+quarantine_hold: 120     # giây, cho quarantine
+
+triggers:
+  # 1) FW thấy truy cập cổng quản trị 8080 -> chèn IPS vào luồng đang chạy
+  #    Controller tự cài 1 rule counter (không verdict) cho TỪNG flow lên đầu chain của fw1:
+  #      <match> @th,64,<len src> 0x<inner src prefix> counter comment "ctl-<name>-<flow>"
+  #    -> chỉ flow thực sự gửi gói mới bị leo thang.
+  - name: admin-port-probe
+    type: nft_counter
+    container: fw1
+    nft_chain: inet sfc_fw forward
+    match: "meta l4proto 41 @th,48,8 6 @th,336,16 8080"
+    threshold: 2            # số gói tăng thêm trong 1 chu kỳ poll (1 lần curl -m2 ≈ 2 SYN)
+    action: fw-ips
+  # 2) IPS thấy quét cổng / SYN rate cao -> thêm SF3 (fw2) chống SYN flood
+  - name: syn-scan
+    type: alert
+    sids: [1000004, 1000005]
+    count: 1
+    window: 10
+    action: fw2-fw-ips
+  # 3) IPS chặn tấn công web nhiều lần -> cô lập luồng
+  - name: web-attack
+    type: alert
+    sids: [1000001, 1000002, 1000003]
+    count: 3
+    window: 60
+    action: quarantine
+
+poll_interval: 2         # giây: poll counter nft + hết hold
+health_interval: 0.5     # giây: kiểm tra sức khoẻ SF (song song) -> quyết định thời gian gián đoạn
+api: {host: 0.0.0.0, port: 8000}

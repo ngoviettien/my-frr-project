@@ -1,0 +1,106 @@
+{
+  "sfs": {
+    "fw": {
+      "sid": "2001:db8:100:35::f1",
+      "alive": true,
+      "proxy": false
+    },
+    "fw2": {
+      "sid": "2001:db8:100:32::f2",
+      "alive": true,
+      "proxy": false
+    },
+    "ips": {
+      "sid": "2001:db8:100:34::a1",
+      "alive": true,
+      "proxy": true
+    }
+  },
+  "flows": {
+    "A": {
+      "src": "2001:db8:100:41::/64",
+      "dst": "2001:db8:100:43::/64",
+      "chain": "fw",
+      "effective": "fw",
+      "baseline": "fw",
+      "pinned": false,
+      "hold_left": 34,
+      "history": [
+        {
+          "ts": 1795637357.971472,
+          "from": "none",
+          "to": "fw",
+          "reason": "baseline",
+          "ms": 290.6
+        },
+        {
+          "ts": 1795637380.5171254,
+          "from": "fw",
+          "to": "fw-ips",
+          "reason": "trigger:admin-port-probe",
+          "ms": 343.0
+        },
+        {
+          "ts": 1795637393.084795,
+          "from": "fw-ips",
+          "to": "fw2-fw-ips",
+          "reason": "trigger:syn-scan",
+          "ms": 488.9
+        },
+        {
+          "ts": 1795637400.4627774,
+          "from": "fw2-fw-ips",
+          "to": "quarantine",
+          "reason": "trigger:web-attack",
+          "ms": 254.4
+        },
+        {
+          "ts": 1795637406.8396838,
+          "from": "quarantine",
+          "to": "fw-ips",
+          "reason": "api",
+          "ms": 265.1
+        },
+        {
+          "ts": 1795637412.3691978,
+          "from": "fw-ips",
+          "to": "fw",
+          "reason": "sf-health",
+          "ms": 285.4
+        },
+        {
+          "ts": 1795637415.4989624,
+          "from": "fw",
+          "to": "fw-ips",
+          "reason": "sf-health",
+          "ms": 268.4
+        },
+        {
+          "ts": 1795637426.5480947,
+          "from": "fw-ips",
+          "to": "fw",
+          "reason": "api release",
+          "ms": 341.0
+        }
+      ]
+    },
+    "B": {
+      "src": "2001:db8:100:42::/64",
+      "dst": "2001:db8:100:44::/64",
+      "chain": "fw",
+      "effective": "fw",
+      "baseline": "fw",
+      "pinned": false,
+      "hold_left": null,
+      "history": [
+        {
+          "ts": 1795637358.2367835,
+          "from": "none",
+          "to": "fw",
+          "reason": "baseline",
+          "ms": 262.2
+        }
+      ]
+    }
+  }
+}

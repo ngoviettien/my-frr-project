@@ -1,0 +1,66 @@
+---
+ctl:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.100
+fw1:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.21
+fw2:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.22
+h1:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.51
+h2:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.52
+r1:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.11
+r2:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.12
+r3:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.13
+r4:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.14
+r5:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.15
+s1:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.41
+s2:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.42
+suricata1:
+    username: 
+    password: 
+    platform: linux
+    hostname: 172.20.20.31

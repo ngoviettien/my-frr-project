@@ -1,0 +1,14 @@
+# ===================== Rule demo cho đồ án SRv6 SFC =====================
+# sid 1000010: kiểm tra GO/NO-GO, Suricata có giải mã được outer IPv6 -> SRH -> inner IPv6 không
+alert icmp any any -> $HOME_NET any (msg:"SFC-IPS ICMPv6 echo request qua chuoi SRv6"; itype:128; threshold:type limit, track by_src, count 1, seconds 10; sid:1000010; rev:1;)
+
+# Tấn công web: luôn bị DROP khi luồng đi qua IPS
+drop http any any -> $HOME_NET any (msg:"SFC-IPS Test attack signature /attack-test"; flow:to_server,established; http.uri; content:"/attack-test"; sid:1000001; rev:1;)
+drop http any any -> $HOME_NET any (msg:"SFC-IPS SQL Injection UNION SELECT"; flow:to_server,established; http.uri; pcre:"/union[\s+]+select/i"; sid:1000002; rev:1;)
+drop http any any -> $HOME_NET any (msg:"SFC-IPS SQL Injection tautology OR 1=1"; flow:to_server,established; http.uri; pcre:"/'\s*or\s*'?1'?\s*=\s*'?1/i"; sid:1000003; rev:1;)
+
+# Trinh sát: ALERT (không drop) để controller phản ứng (chèn IPS / cô lập luồng)
+alert tcp any any -> $HOME_NET any (msg:"SFC-IPS Port scan (SYN toi nhieu cong)"; flags:S,12; threshold:type threshold, track by_src, count 30, seconds 5; sid:1000004; rev:1;)
+
+# SYN flood vào web: DROP mọi SYN vượt ngưỡng 200 gói/giây tới cùng đích
+drop tcp any any -> $HOME_NET 80 (msg:"SFC-IPS SYN flood toi port 80"; flags:S,12; detection_filter:track by_dst, count 200, seconds 1; sid:1000005; rev:1;)

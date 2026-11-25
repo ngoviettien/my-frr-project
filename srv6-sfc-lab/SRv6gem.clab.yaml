@@ -1,0 +1,274 @@
+# =====================================================================
+#  SRv6 SFC lab – Firewall / IPS service chaining (v2, 26/11/2026)
+#  Thay đổi so với v1:
+#   - Router: thêm tcpdump, giữ sysctl seg6, thêm SF3 (fw2) gắn r2 eth3/eth4
+#   - fw1/fw2: nftables (đọc inner packet của gói SRv6)
+#   - suricata1: entrypoint sleep, start IPS NFQUEUE ở lệnh exec cuối
+#   - Bind dùng đường dẫn tương đối ./ (tránh ~ thành /root khi sudo)
+#   - Host: alpine + iperf3/curl/nmap/python3, MTU 1500 trên eth1
+#   - ctl: mount docker.sock để controller điều khiển node qua docker SDK
+# =====================================================================
+name: SRv6-lab
+
+mgmt:
+  network: clab
+  ipv4-subnet: 172.20.20.0/24
+  ipv6-subnet: 2001:172:20:20::/64
+
+topology:
+  defaults:
+    kind: linux
+
+  nodes:
+    # ================= SDN CONTROLLER =================
+    ctl:
+      image: python:3.11-slim
+      mgmt-ipv4: 172.20.20.100
+      binds:
+        - ./controller:/app
+        - /var/run/docker.sock:/var/run/docker.sock
+      exec:
+        - sh -c "pip install --no-cache-dir docker pyyaml > /tmp/pip.log 2>&1"
+      cmd: sleep infinity
+
+    # ================= ROUTERS =================
+    r1:
+      image: quay.io/frrouting/frr:10.7.1
+      cap-add: [NET_ADMIN, SYS_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.11
+      binds:
+        - ./config/r1/frr.conf:/etc/frr/frr.conf
+        - ./config/r1/daemons:/etc/frr/daemons
+        - ./config/r1/vtysh.conf:/etc/frr/vtysh.conf
+      sysctls: &frr_sysctls      # anchor: r2..r5 dùng lại (*frr_sysctls)
+        net.ipv4.ip_forward: "1"
+        net.ipv6.conf.all.forwarding: "1"
+        net.ipv6.conf.all.seg6_enabled: "1"
+        net.ipv6.conf.default.seg6_enabled: "1"
+        net.vrf.strict_mode: "1"
+      exec:
+        - sh -c "apk add --no-cache tcpdump > /dev/null 2>&1 || true"
+        - ip link add sr0 type dummy
+        - sysctl -w net.ipv6.conf.sr0.disable_ipv6=0
+        - sh -c "for i in 1 2 3 4 5; do sysctl -qw net.ipv6.conf.eth$i.seg6_enabled=1; done"
+        - ip link set sr0 up
+        - ip -6 addr add 2001:db8:100::1/128 dev sr0
+        - ip -6 addr add 2001:db8:100:41::1/64 dev eth1
+        - ip -6 addr add 2001:db8:100:42::1/64 dev eth2
+        - ip -6 addr add 2001:db8:100:1:12::0/127 dev eth3
+        - ip -6 addr add 2001:db8:100:1:14::0/127 dev eth4
+        - ip -6 addr add 2001:db8:100:1:15::0/127 dev eth5
+        - vtysh -b
+
+    r2:
+      image: quay.io/frrouting/frr:10.7.1
+      cap-add: [NET_ADMIN, SYS_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.12
+      binds:
+        - ./config/r2/frr.conf:/etc/frr/frr.conf
+        - ./config/r2/daemons:/etc/frr/daemons
+        - ./config/r2/vtysh.conf:/etc/frr/vtysh.conf
+      sysctls: *frr_sysctls
+      exec:
+        - sh -c "apk add --no-cache tcpdump > /dev/null 2>&1 || true"
+        - ip link add sr0 type dummy
+        - sysctl -w net.ipv6.conf.sr0.disable_ipv6=0
+        - sh -c "for i in 1 2 3 4; do sysctl -qw net.ipv6.conf.eth$i.seg6_enabled=1; done"
+        - ip link set sr0 up
+        - ip -6 addr add 2001:db8:100::2/128 dev sr0
+        - ip -6 addr add 2001:db8:100:1:12::1/127 dev eth1
+        - ip -6 addr add 2001:db8:100:1:23::0/127 dev eth2
+        - ip -6 addr add 2001:db8:100:49::1/64 dev eth3      # -> fw2 eth1 (SF3 vào)
+        - ip -6 addr add 2001:db8:100:4a::1/64 dev eth4      # <- fw2 eth2 (SF3 ra)
+        - vtysh -b
+
+    r3:
+      image: quay.io/frrouting/frr:10.7.1
+      cap-add: [NET_ADMIN, SYS_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.13
+      binds:
+        - ./config/r3/frr.conf:/etc/frr/frr.conf
+        - ./config/r3/daemons:/etc/frr/daemons
+        - ./config/r3/vtysh.conf:/etc/frr/vtysh.conf
+      sysctls: *frr_sysctls
+      exec:
+        - sh -c "apk add --no-cache tcpdump > /dev/null 2>&1 || true"
+        - ip link add sr0 type dummy
+        - sysctl -w net.ipv6.conf.sr0.disable_ipv6=0
+        - sh -c "for i in 1 2 3 4 5; do sysctl -qw net.ipv6.conf.eth$i.seg6_enabled=1; done"
+        - ip link set sr0 up
+        - ip -6 addr add 2001:db8:100::3/128 dev sr0
+        - ip -6 addr add 2001:db8:100:43::1/64 dev eth1
+        - ip -6 addr add 2001:db8:100:1:34::1/127 dev eth2
+        - ip -6 addr add 2001:db8:100:1:35::1/127 dev eth3
+        - ip -6 addr add 2001:db8:100:1:23::1/127 dev eth4
+        - ip -6 addr add 2001:db8:100:44::1/64 dev eth5
+        - vtysh -b
+
+    r4:
+      image: quay.io/frrouting/frr:10.7.1
+      cap-add: [NET_ADMIN, SYS_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.14
+      binds:
+        - ./config/r4/frr.conf:/etc/frr/frr.conf
+        - ./config/r4/daemons:/etc/frr/daemons
+        - ./config/r4/vtysh.conf:/etc/frr/vtysh.conf
+      sysctls: *frr_sysctls
+      exec:
+        - sh -c "apk add --no-cache tcpdump > /dev/null 2>&1 || true"
+        - ip link add sr0 type dummy
+        - sysctl -w net.ipv6.conf.sr0.disable_ipv6=0
+        - sh -c "for i in 1 2 3 4 5; do sysctl -qw net.ipv6.conf.eth$i.seg6_enabled=1; done"
+        - ip link set sr0 up
+        - ip -6 addr add 2001:db8:100::4/128 dev sr0
+        - ip -6 addr add 2001:db8:100:48::1/64 dev eth1      # <- suricata1 eth1 (IPS ra)
+        - ip -6 addr add 2001:db8:100:46::1/64 dev eth2      # -> suricata1 eth2 (IPS vào)
+        - ip -6 addr add 2001:db8:100:1:45::1/127 dev eth3
+        - ip -6 addr add 2001:db8:100:1:14::1/127 dev eth4
+        - ip -6 addr add 2001:db8:100:1:34::0/127 dev eth5
+        - vtysh -b
+
+    r5:
+      image: quay.io/frrouting/frr:10.7.1
+      cap-add: [NET_ADMIN, SYS_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.15
+      binds:
+        - ./config/r5/frr.conf:/etc/frr/frr.conf
+        - ./config/r5/daemons:/etc/frr/daemons
+        - ./config/r5/vtysh.conf:/etc/frr/vtysh.conf
+      sysctls: *frr_sysctls
+      exec:
+        - sh -c "apk add --no-cache tcpdump > /dev/null 2>&1 || true"
+        - ip link add sr0 type dummy
+        - sysctl -w net.ipv6.conf.sr0.disable_ipv6=0
+        - sh -c "for i in 1 2 3 4 5; do sysctl -qw net.ipv6.conf.eth$i.seg6_enabled=1; done"
+        - ip link set sr0 up
+        - ip -6 addr add 2001:db8:100::5/128 dev sr0
+        - ip -6 addr add 2001:db8:100:47::1/64 dev eth1      # <- fw1 eth2 (FW ra)
+        - ip -6 addr add 2001:db8:100:45::1/64 dev eth2      # -> fw1 eth1 (FW vào)
+        - ip -6 addr add 2001:db8:100:1:15::1/127 dev eth3
+        - ip -6 addr add 2001:db8:100:1:35::0/127 dev eth4
+        - ip -6 addr add 2001:db8:100:1:45::0/127 dev eth5
+        - vtysh -b
+
+    # ================= SERVICE FUNCTIONS =================
+    fw1:
+      image: alpine:latest
+      cap-add: [NET_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.21
+      binds:
+        - ./fw/fw1/firewall.sh:/root/firewall.sh:ro
+      sysctls:
+        net.ipv6.conf.all.forwarding: "1"
+      exec:
+        - sh -c "apk add --no-cache nftables iproute2 tcpdump > /tmp/apk.log 2>&1"
+        - ip -6 addr add 2001:db8:100:45::10/64 dev eth1
+        - ip -6 addr add 2001:db8:100:47::10/64 dev eth2
+        - ip -6 route replace default via 2001:db8:100:47::1 dev eth2
+        - sh /root/firewall.sh
+
+    fw2:
+      image: alpine:latest
+      cap-add: [NET_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.22
+      binds:
+        - ./fw/fw2/firewall.sh:/root/firewall.sh:ro
+      sysctls:
+        net.ipv6.conf.all.forwarding: "1"
+      exec:
+        - sh -c "apk add --no-cache nftables iproute2 tcpdump > /tmp/apk.log 2>&1"
+        - ip -6 addr add 2001:db8:100:49::10/64 dev eth1
+        - ip -6 addr add 2001:db8:100:4a::10/64 dev eth2
+        - ip -6 route replace default via 2001:db8:100:4a::1 dev eth2
+        - sh /root/firewall.sh
+
+    suricata1:
+      image: jasonish/suricata:latest
+      entrypoint: sleep
+      cmd: infinity
+      cap-add: [NET_ADMIN, NET_RAW, SYS_ADMIN, SYS_NICE]
+      mgmt-ipv4: 172.20.20.31
+      sysctls:
+        net.ipv6.conf.all.forwarding: "1"
+      binds:
+        - ./suricata/suricata1/suricata.yaml:/etc/suricata/suricata.yaml:ro
+        - ./suricata/suricata1/rules:/var/lib/suricata/rules:ro
+        - ./suricata/suricata1/logs:/var/log/suricata
+        - ./suricata/suricata1/start-ips.sh:/root/start-ips.sh:ro
+      exec:
+        - ip -6 addr add 2001:db8:100:48::10/64 dev eth1
+        - ip -6 addr add 2001:db8:100:46::10/64 dev eth2
+        - ip -6 route replace default via 2001:db8:100:48::1 dev eth1
+        - sh /root/start-ips.sh
+
+    # ================= SERVERS / CLIENTS =================
+    s1:
+      image: alpine:latest
+      cap-add: [NET_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.41
+      binds:
+        - ./host/s1/html:/www:ro
+      exec:
+        - sh -c "apk add --no-cache python3 iperf3 tcpdump > /tmp/apk.log 2>&1"
+        - ip link set eth1 mtu 1500
+        - ip -6 addr add 2001:db8:100:43::10/64 dev eth1
+        - ip -6 route replace default via 2001:db8:100:43::1 dev eth1
+        - 'sh -c "setsid python3 -m http.server 80   --bind :: --directory /www > /tmp/http80.log 2>&1 < /dev/null &"'
+        - 'sh -c "setsid python3 -m http.server 8080 --bind :: --directory /www > /tmp/http8080.log 2>&1 < /dev/null &"'
+        - iperf3 -s -D
+
+    s2:
+      image: alpine:latest
+      cap-add: [NET_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.42
+      binds:
+        - ./host/s2/html:/www:ro
+      exec:
+        - sh -c "apk add --no-cache python3 iperf3 tcpdump > /tmp/apk.log 2>&1"
+        - ip link set eth1 mtu 1500
+        - ip -6 addr add 2001:db8:100:44::10/64 dev eth1
+        - ip -6 route replace default via 2001:db8:100:44::1 dev eth1
+        - 'sh -c "setsid python3 -m http.server 80   --bind :: --directory /www > /tmp/http80.log 2>&1 < /dev/null &"'
+        - 'sh -c "setsid python3 -m http.server 8080 --bind :: --directory /www > /tmp/http8080.log 2>&1 < /dev/null &"'
+        - iperf3 -s -D
+
+    h1:
+      image: alpine:latest
+      cap-add: [NET_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.51
+      exec:
+        - sh -c "apk add --no-cache iperf3 curl nmap nmap-nping tcpdump iputils > /tmp/apk.log 2>&1"
+        - sh -c "apk add --no-cache hping3 > /dev/null 2>&1 || true"
+        - ip link set eth1 mtu 1500
+        - ip -6 addr add 2001:db8:100:41::10/64 dev eth1
+        - ip -6 route replace default via 2001:db8:100:41::1 dev eth1
+
+    h2:
+      image: alpine:latest
+      cap-add: [NET_ADMIN, NET_RAW]
+      mgmt-ipv4: 172.20.20.52
+      exec:
+        - sh -c "apk add --no-cache iperf3 curl nmap nmap-nping tcpdump iputils > /tmp/apk.log 2>&1"
+        - sh -c "apk add --no-cache hping3 > /dev/null 2>&1 || true"
+        - ip link set eth1 mtu 1500
+        - ip -6 addr add 2001:db8:100:42::10/64 dev eth1
+        - ip -6 route replace default via 2001:db8:100:42::1 dev eth1
+
+  links:
+    - endpoints: ["r1:eth1", "h1:eth1"]
+    - endpoints: ["r1:eth2", "h2:eth1"]
+    - endpoints: ["r1:eth3", "r2:eth1"]          # link12
+    - endpoints: ["r1:eth4", "r4:eth4"]          # link14
+    - endpoints: ["r1:eth5", "r5:eth3"]          # link15
+    - endpoints: ["r5:eth1", "fw1:eth2"]         # FW ra  (47)
+    - endpoints: ["r5:eth2", "fw1:eth1"]         # FW vào (45)
+    - endpoints: ["r5:eth4", "r3:eth3"]          # link35
+    - endpoints: ["r5:eth5", "r4:eth3"]          # link45
+    - endpoints: ["r4:eth1", "suricata1:eth1"]   # IPS ra  (48)
+    - endpoints: ["r4:eth2", "suricata1:eth2"]   # IPS vào (46)
+    - endpoints: ["r4:eth5", "r3:eth2"]          # link34
+    - endpoints: ["r3:eth4", "r2:eth2"]          # link23
+    - endpoints: ["r3:eth1", "s1:eth1"]
+    - endpoints: ["r3:eth5", "s2:eth1"]
+    - endpoints: ["r2:eth3", "fw2:eth1"]         # SF3 vào (49)
+    - endpoints: ["r2:eth4", "fw2:eth2"]         # SF3 ra  (4a)

@@ -1,0 +1,69 @@
+{"ts": 1795636791.872, "event": "start", "policy": "/app/policy.yaml", "flows": ["A", "B"], "sfs": ["fw", "fw2", "ips"]}
+{"ts": 1795636792.667, "event": "apply", "flow": "A", "chain": "fw", "effective": "fw", "prev": "none", "ms": 338.0, "reason": "baseline", "errors": 0}
+{"ts": 1795636793.063, "event": "apply", "flow": "B", "chain": "fw", "effective": "fw", "prev": "none", "ms": 392.7, "reason": "baseline", "errors": 0}
+{"ts": 1795636793.09, "event": "api", "listen": "0.0.0.0:8000"}
+{"ts": 1795636800.174, "event": "stop"}
+{"ts": 1795636836.496, "event": "start", "policy": "/app/policy.yaml", "flows": ["A", "B"], "sfs": ["fw", "fw2", "ips"]}
+{"ts": 1795636837.343, "event": "apply", "flow": "A", "chain": "fw", "effective": "fw", "prev": "none", "ms": 390.1, "reason": "baseline", "errors": 0}
+{"ts": 1795636837.65, "event": "apply", "flow": "B", "chain": "fw", "effective": "fw", "prev": "none", "ms": 305.8, "reason": "baseline", "errors": 0}
+{"ts": 1795636837.664, "event": "api", "listen": "0.0.0.0:8000"}
+{"ts": 1795636873.664, "event": "trigger", "flow": "A", "trigger": "admin-port-probe", "action": "fw-ips", "detail": "+2 gói"}
+{"ts": 1795636874.002, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw-ips", "prev": "fw", "ms": 336.6, "reason": "trigger:admin-port-probe", "errors": 0}
+{"ts": 1795636874.006, "event": "trigger", "flow": "B", "trigger": "admin-port-probe", "action": "fw-ips", "detail": "+2 gói"}
+{"ts": 1795636874.276, "event": "apply", "flow": "B", "chain": "fw-ips", "effective": "fw-ips", "prev": "fw", "ms": 268.3, "reason": "trigger:admin-port-probe", "errors": 0}
+{"ts": 1795636876.828, "event": "trigger-refresh", "flow": "A", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795636876.829, "event": "trigger-refresh", "flow": "B", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795636879.409, "event": "trigger-refresh", "flow": "A", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795636879.41, "event": "trigger-refresh", "flow": "B", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795636882.377, "event": "trigger-refresh", "flow": "A", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795636882.378, "event": "trigger-refresh", "flow": "B", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795636886.635, "event": "alert", "sid": 1000004, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS Port scan (SYN toi nhieu cong)"}
+{"ts": 1795636886.636, "event": "trigger", "flow": "A", "trigger": "syn-scan", "action": "fw2-fw-ips", "detail": "sid=1000004"}
+{"ts": 1795636886.937, "event": "apply", "flow": "A", "chain": "fw2-fw-ips", "effective": "fw2-fw-ips", "prev": "fw-ips", "ms": 300.3, "reason": "trigger:syn-scan", "errors": 0}
+{"ts": 1795636887.313, "event": "alert", "sid": 1000004, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS Port scan (SYN toi nhieu cong)"}
+{"ts": 1795636887.314, "event": "trigger-refresh", "flow": "A", "trigger": "syn-scan", "current": "fw2-fw-ips"}
+{"ts": 1795636889.827, "event": "alert", "sid": 1000001, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "blocked", "msg": "SFC-IPS Test attack signature /attack-test"}
+{"ts": 1795636892.052, "event": "alert", "sid": 1000001, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "blocked", "msg": "SFC-IPS Test attack signature /attack-test"}
+{"ts": 1795636894.219, "event": "alert", "sid": 1000001, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "blocked", "msg": "SFC-IPS Test attack signature /attack-test"}
+{"ts": 1795636894.22, "event": "trigger", "flow": "A", "trigger": "web-attack", "action": "quarantine", "detail": "sid=1000001"}
+{"ts": 1795636894.497, "event": "apply", "flow": "A", "chain": "quarantine", "effective": "quarantine", "prev": "fw2-fw-ips", "ms": 276.9, "reason": "trigger:web-attack", "errors": 0}
+{"ts": 1795636900.899, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw-ips", "prev": "quarantine", "ms": 303.7, "reason": "api", "errors": 0}
+{"ts": 1795636901.137, "event": "alert", "sid": 1000010, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS ICMPv6 echo request qua chuoi SRv6"}
+{"ts": 1795636905.143, "event": "sf-down", "sf": "ips", "container": "suricata1"}
+{"ts": 1795636905.427, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw", "prev": "fw-ips", "ms": 283.7, "reason": "sf-health", "errors": 0}
+{"ts": 1795636905.675, "event": "apply", "flow": "B", "chain": "fw-ips", "effective": "fw", "prev": "fw-ips", "ms": 246.2, "reason": "sf-health", "errors": 0}
+{"ts": 1795636910.72, "event": "sf-up", "sf": "ips", "container": "suricata1"}
+{"ts": 1795636910.989, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw-ips", "prev": "fw", "ms": 267.2, "reason": "sf-health", "errors": 0}
+{"ts": 1795636911.061, "event": "alert", "sid": 1000010, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS ICMPv6 echo request qua chuoi SRv6"}
+{"ts": 1795636911.215, "event": "apply", "flow": "B", "chain": "fw-ips", "effective": "fw-ips", "prev": "fw", "ms": 223.1, "reason": "sf-health", "errors": 0}
+{"ts": 1795636920.717, "event": "apply", "flow": "A", "chain": "fw", "effective": "fw", "prev": "fw-ips", "ms": 285.5, "reason": "api release", "errors": 0}
+{"ts": 1795636944.587, "event": "apply", "flow": "B", "chain": "fw", "effective": "fw", "prev": "fw-ips", "ms": 270.0, "reason": "hold 60s hết, về baseline", "errors": 0}
+{"ts": 1795637353.804, "event": "stop"}
+{"ts": 1795637357.459, "event": "start", "policy": "/app/policy.yaml", "flows": ["A", "B"], "sfs": ["fw", "fw2", "ips"]}
+{"ts": 1795637357.971, "event": "apply", "flow": "A", "chain": "fw", "effective": "fw", "prev": "none", "ms": 290.6, "reason": "baseline", "errors": 0}
+{"ts": 1795637358.237, "event": "apply", "flow": "B", "chain": "fw", "effective": "fw", "prev": "none", "ms": 262.2, "reason": "baseline", "errors": 0}
+{"ts": 1795637358.51, "event": "nft-monitor", "trigger": "admin-port-probe", "container": "fw1", "flows": ["A", "B"], "ok": true, "detail": ""}
+{"ts": 1795637358.526, "event": "api", "listen": "0.0.0.0:8000"}
+{"ts": 1795637380.172, "event": "trigger", "flow": "A", "trigger": "admin-port-probe", "action": "fw-ips", "detail": "+2 gói"}
+{"ts": 1795637380.517, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw-ips", "prev": "fw", "ms": 343.0, "reason": "trigger:admin-port-probe", "errors": 0}
+{"ts": 1795637382.645, "event": "trigger-refresh", "flow": "A", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795637384.8, "event": "trigger-refresh", "flow": "A", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795637386.93, "event": "trigger-refresh", "flow": "A", "trigger": "admin-port-probe", "current": "fw-ips"}
+{"ts": 1795637392.595, "event": "alert", "sid": 1000004, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS Port scan (SYN toi nhieu cong)"}
+{"ts": 1795637392.596, "event": "trigger", "flow": "A", "trigger": "syn-scan", "action": "fw2-fw-ips", "detail": "sid=1000004"}
+{"ts": 1795637393.085, "event": "apply", "flow": "A", "chain": "fw2-fw-ips", "effective": "fw2-fw-ips", "prev": "fw-ips", "ms": 488.9, "reason": "trigger:syn-scan", "errors": 0}
+{"ts": 1795637393.3, "event": "alert", "sid": 1000004, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS Port scan (SYN toi nhieu cong)"}
+{"ts": 1795637393.3, "event": "trigger-refresh", "flow": "A", "trigger": "syn-scan", "current": "fw2-fw-ips"}
+{"ts": 1795637395.787, "event": "alert", "sid": 1000001, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "blocked", "msg": "SFC-IPS Test attack signature /attack-test"}
+{"ts": 1795637398.013, "event": "alert", "sid": 1000001, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "blocked", "msg": "SFC-IPS Test attack signature /attack-test"}
+{"ts": 1795637400.206, "event": "alert", "sid": 1000001, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "blocked", "msg": "SFC-IPS Test attack signature /attack-test"}
+{"ts": 1795637400.208, "event": "trigger", "flow": "A", "trigger": "web-attack", "action": "quarantine", "detail": "sid=1000001"}
+{"ts": 1795637400.463, "event": "apply", "flow": "A", "chain": "quarantine", "effective": "quarantine", "prev": "fw2-fw-ips", "ms": 254.4, "reason": "trigger:web-attack", "errors": 0}
+{"ts": 1795637406.84, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw-ips", "prev": "quarantine", "ms": 265.1, "reason": "api", "errors": 0}
+{"ts": 1795637407.108, "event": "alert", "sid": 1000010, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS ICMPv6 echo request qua chuoi SRv6"}
+{"ts": 1795637412.083, "event": "sf-down", "sf": "ips", "container": "suricata1"}
+{"ts": 1795637412.369, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw", "prev": "fw-ips", "ms": 285.4, "reason": "sf-health", "errors": 0}
+{"ts": 1795637415.229, "event": "sf-up", "sf": "ips", "container": "suricata1"}
+{"ts": 1795637415.495, "event": "alert", "sid": 1000010, "src": "2001:0db8:0100:0041:0000:0000:0000:0010", "dst": "2001:0db8:0100:0043:0000:0000:0000:0010", "flow": "A", "action": "allowed", "msg": "SFC-IPS ICMPv6 echo request qua chuoi SRv6"}
+{"ts": 1795637415.499, "event": "apply", "flow": "A", "chain": "fw-ips", "effective": "fw-ips", "prev": "fw", "ms": 268.4, "reason": "sf-health", "errors": 0}
+{"ts": 1795637426.548, "event": "apply", "flow": "A", "chain": "fw", "effective": "fw", "prev": "fw-ips", "ms": 341.0, "reason": "api release", "errors": 0}
